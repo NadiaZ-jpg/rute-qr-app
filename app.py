@@ -6,14 +6,14 @@ from geopy.geocoders import Nominatim
 import qrcode
 from io import BytesIO
 
-st.title("Aplicație Rute Multiple & QR")
+st.title("Aplicație Rute & QR - Rută Completă")
 
 # --- Input: Lista de adrese ---
 st.header("Introdu adresele (una pe linie)")
 addresses_input = st.text_area("Opriri:", "București, România\nBrașov, România\nSibiu, România")
 addresses = [a.strip() for a in addresses_input.split("\n") if a.strip()]
 
-if st.button("Generează hartă și coduri QR"):
+if st.button("Generează hartă și QR pentru ruta completă"):
     geolocator = Nominatim(user_agent="rute_qr_app")
     locations = []
     failed = []
@@ -35,22 +35,5 @@ if st.button("Generează hartă și coduri QR"):
         avg_lon = sum([lon for _, _, lon in locations])/len(locations)
         m = folium.Map(location=[avg_lat, avg_lon], zoom_start=7)
 
-        # Adaugă marcatori și linie polilinie pentru rută
         coords = []
         for name, lat, lon in locations:
-            folium.Marker([lat, lon], popup=name).add_to(m)
-            coords.append([lat, lon])
-        folium.PolyLine(coords, color="blue", weight=3, opacity=0.7).add_to(m)
-
-        st_folium(m, width=700, height=500)
-
-        # --- Generare coduri QR individuale ---
-        st.header("Coduri QR pentru fiecare oprire")
-        for name, lat, lon in locations:
-            qr_data = f"{name} ({lat}, {lon})"
-            qr_img = qrcode.make(qr_data)
-            buf = BytesIO()
-            qr_img.save(buf)
-            st.image(buf, caption=qr_data)
-    else:
-        st.error("Trebuie să existe cel puțin două adrese valide pentru a genera ruta.")
