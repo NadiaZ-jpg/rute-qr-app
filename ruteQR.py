@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 import folium
 from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
@@ -10,10 +9,6 @@ import urllib.parse
 
 st.set_page_config(page_title="ruteQR", layout="wide")
 st.title("ruteQR")
-
-# --- Istoric rutelor (în memorie) ---
-if "history" not in st.session_state:
-    st.session_state.history = pd.DataFrame(columns=["Ruta", "Google Maps URL"])
 
 # --- Input: Lista de adrese ---
 st.header("Introdu adresele (una pe linie)")
@@ -27,7 +22,6 @@ bg_color = st.sidebar.color_picker("Culoare fundal", "#ffffff")
 qr_size = st.sidebar.slider("Dimensiune QR (pixeli)", 200, 800, 400)
 logo_file = st.sidebar.file_uploader("Logo în centru (PNG)", type=["png"])
 
-# --- Buton pentru generare ---
 if st.button("Generează hartă și QR Google Maps"):
     geolocator = Nominatim(user_agent="rute_qr_app")
     locations = []
@@ -58,7 +52,6 @@ if st.button("Generează hartă și QR Google Maps"):
 
         # --- Link Google Maps ---
         base_url = "https://www.google.com/maps/dir/"
-        route_str = " -> ".join([addr for addr, _, _ in locations])
         route_url = base_url + "/".join([urllib.parse.quote(addr) for addr, _, _ in locations])
 
         # --- Generare QR personalizat ---
@@ -72,6 +65,7 @@ if st.button("Generează hartă și QR Google Maps"):
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color=qr_color, back_color=bg_color).convert('RGB')
 
+        # --- Adaugă logo dacă există ---
         if logo_file:
             logo = Image.open(logo_file)
             box_size = qr_img.size[0] // 4
@@ -79,27 +73,14 @@ if st.button("Generează hartă și QR Google Maps"):
             pos = ((qr_img.size[0]-box_size)//2, (qr_img.size[1]-box_size)//2)
             qr_img.paste(logo, pos, mask=logo)
 
+        # --- Resize final ---
         qr_img = qr_img.resize((qr_size, qr_size))
         buf = BytesIO()
         qr_img.save(buf, format="PNG")
         buf.seek(0)
 
-        st.header("QR personalizat pentru ruta completă")
         st.image(buf, caption="QR pentru ruta completă")
         st.download_button("Descarcă QR ca PNG", buf, file_name="ruta_completa_qr.png", mime="image/png")
 
-        # --- Salvare istoric în sesiune ---
-        st.session_state.history = pd.concat([
-            st.session_state.history,
-            pd.DataFrame({"Ruta":[route_str], "Google Maps URL":[route_url]})
-        ], ignore_index=True)
-
-# --- Afișare istoric și export CSV ---
-if not st.session_state.history.empty:
-    st.header("Istoric rute generate")
-    st.dataframe(st.session_state.history)
-
-    csv_buf = BytesIO()
-    st.session_state.history.to_csv(csv_buf, index=False)
-    csv_buf.seek(0)
-    st.download_button("Exportă istoricul ca CSV", csv_buf, file_name="istoric_rute.csv", mime="text/csv")
+    else:
+        st.error("Trebuie să existe cel puțin două adrese valide pentru a genera ruta.")
