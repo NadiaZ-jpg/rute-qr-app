@@ -3,8 +3,8 @@ import qrcode
 from io import BytesIO
 import urllib.parse
 
-st.set_page_config(page_title="Ruta QR Generator", page_icon="🗺️", layout="centered")
-st.title("🗺️ Generator Cod QR pentru Rute Google Maps")
+st.set_page_config(page_title="ruteQR", page_icon="🗺️", layout="wide")
+st.title("🗺️ "ruteQR")
 
 st.markdown("""
 Creează rapid coduri QR pentru orice rută Google Maps.  
