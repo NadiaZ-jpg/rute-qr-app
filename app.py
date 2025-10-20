@@ -15,7 +15,7 @@ Selectează modul de deplasare și apasă „Generează QR”.
 plecare = st.text_input("📍 Punct de plecare")
 destinatie = st.text_input("🏁 Destinație finală")
 opriri_text = st.text_input("📌 Opriri intermediare (separate prin ';')", placeholder="Ex: Ploiești;Brașov")
-travelmode = st.selectbox("🚗 Mod de deplasare", ["driving", "walking", "transit", "bicycling"])
+travelmode = st.selectbox("🚗 Mod de deplasare", ["mașina", "mers", "transit", "bicicleta"])
 
 if st.button("🟢 Generează cod QR"):
     if plecare and destinatie:
