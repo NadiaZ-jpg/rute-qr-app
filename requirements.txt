@@ -4,3 +4,4 @@ folium
 geopy
 qrcode[pil]
 streamlit_folium
+Pillow
