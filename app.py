@@ -1,38 +1,56 @@
 import streamlit as st
+import pandas as pd
+import folium
+from streamlit_folium import st_folium
+from geopy.geocoders import Nominatim
 import qrcode
 from io import BytesIO
-import urllib.parse
-st.set_page_config(page_title="Ruta QR Generator", page_icon="🗺️", layout="centered")
-st.title("🗺️ Generator Cod QR pentru Rute Google Maps")
-st.markdown("""
-Creează rapid coduri QR pentru orice rută Google Maps.  
-Introduceți **punctul de plecare**, **destinația finală** și **opriri intermediare**.  
-Selectează modul de deplasare și apasă „Generează QR”.
-""")
-plecare = st.text_input("📍 Punct de plecare")
-destinatie = st.text_input("🏁 Destinație finală")
-opriri_text = st.text_input("📌 Opriri intermediare (separate prin ';')", placeholder="Ex: Ploiești;Brașov")
-travelmode = st.selectbox("🚗 Mod de deplasare", ["driving", "walking", "transit", "bicycling"])
-if st.button("🟢 Generează cod QR"):
-    if plecare and destinatie:
-        opriri = [o.strip() for o in opriri_text.split(";") if o.strip()]
-        waypoints_str = "|".join(opriri) if opriri else ""
-        url = f"https://www.google.com/maps/dir/?api=1&origin={plecare.replace(' ','+')}&destination={destinatie.replace(' ','+')}&travelmode={travelmode}"
-        if waypoints_str:
-            url += f"&waypoints={waypoints_str.replace(' ','+')}"
-        # QR
-        qr = qrcode.make(url)
-        buf = BytesIO()
-        qr.save(buf, format="PNG")
-        buf.seek(0)
-        st.image(buf, caption="📲 Scanează pentru ruta Google Maps", use_container_width=True)
-        st.markdown(f"🔗 [Deschide ruta în Google Maps]({url})")
-        st.download_button("📥 Descarcă codul QR", buf, file_name="ruta_qr.png", mime="image/png")
-        # Partajare rapidă
-        url_encoded = urllib.parse.quote(url)
-        st.markdown("### 📤 Partajare rapidă")
-        st.markdown(f"- [WhatsApp](https://api.whatsapp.com/send?text={url_encoded})")
-        st.markdown(f"- [Telegram](https://t.me/share/url?url={url_encoded}&text=Ruta QR)")
-        st.markdown(f"- [Email](mailto:?subject=Ruta QR&body={url_encoded})")
+
+st.title("Aplicație Rute Multiple & QR")
+
+# --- Input: Lista de adrese ---
+st.header("Introdu adresele (una pe linie)")
+addresses_input = st.text_area("Opriri:", "București, România\nBrașov, România\nSibiu, România")
+addresses = [a.strip() for a in addresses_input.split("\n") if a.strip()]
+
+if st.button("Generează hartă și coduri QR"):
+    geolocator = Nominatim(user_agent="rute_qr_app")
+    locations = []
+    failed = []
+
+    # --- Geocoding pentru fiecare adresă ---
+    for addr in addresses:
+        loc = geolocator.geocode(addr)
+        if loc:
+            locations.append((addr, loc.latitude, loc.longitude))
+        else:
+            failed.append(addr)
+
+    if failed:
+        st.warning(f"Nu am putut găsi următoarele adrese: {', '.join(failed)}")
+
+    if len(locations) >= 2:
+        # --- Hartă Folium ---
+        avg_lat = sum([lat for _, lat, _ in locations])/len(locations)
+        avg_lon = sum([lon for _, _, lon in locations])/len(locations)
+        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=7)
+
+        # Adaugă marcatori și linie polilinie pentru rută
+        coords = []
+        for name, lat, lon in locations:
+            folium.Marker([lat, lon], popup=name).add_to(m)
+            coords.append([lat, lon])
+        folium.PolyLine(coords, color="blue", weight=3, opacity=0.7).add_to(m)
+
+        st_folium(m, width=700, height=500)
+
+        # --- Generare coduri QR individuale ---
+        st.header("Coduri QR pentru fiecare oprire")
+        for name, lat, lon in locations:
+            qr_data = f"{name} ({lat}, {lon})"
+            qr_img = qrcode.make(qr_data)
+            buf = BytesIO()
+            qr_img.save(buf)
+            st.image(buf, caption=qr_data)
     else:
-        st.warning("⚠️ Te rog completează plecare și destinație.")
+        st.error("Trebuie să existe cel puțin două adrese valide pentru a genera ruta.")
